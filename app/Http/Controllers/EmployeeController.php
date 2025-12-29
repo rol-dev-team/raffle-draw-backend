@@ -12,11 +12,23 @@ class EmployeeController extends Controller
     // 🔹 GET: All Employees
     public function index()
     {
+        $data = DB::select("
+        SELECT 
+            e.*,
+            GROUP_CONCAT(t.ticket_no ORDER BY t.ticket_no SEPARATOR ', ') AS tickets
+        FROM employees e
+        INNER JOIN tickets t 
+            ON e.id = t.employee_id
+        WHERE t.status = 'active'
+        GROUP BY e.id
+    ");
+
         return response()->json([
             'status' => true,
-            'data' => Employee::latest()->get()
+            'data' => $data
         ]);
     }
+
 
     // 🔹 POST: Store Employee
 
@@ -184,5 +196,45 @@ class EmployeeController extends Controller
             'message' => 'CSV imported successfully'
         ]);
     }
+
+    public function searchByTicket(Request $request)
+    {
+        $request->validate([
+            'ticket_no' => 'required|string'
+        ]);
+
+        $ticketNo = trim($request->ticket_no);
+
+        $employee = DB::table('tickets as t')
+            ->join('employees as e', 'e.id', '=', 't.employee_id')
+            ->where('t.ticket_no', $ticketNo)
+            ->where('t.status', 'active')
+            ->select(
+                'e.id',
+                'e.name',
+                'e.branch',
+                'e.division',
+                'e.department',
+                'e.designation',
+                'e.reg_code',
+                'e.company',
+                'e.gender',
+                't.ticket_no'
+            )
+            ->first();
+
+        if (!$employee) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Invalid ticket number'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => true,
+            'data' => $employee
+        ]);
+    }
+
 
 }

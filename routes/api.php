@@ -10,3 +10,4 @@ Route::put('/employees/{id}', [EmployeeController::class, 'update']);
 Route::delete('/employees/{id}', [EmployeeController::class, 'destroy']);
 
 Route::post('/employees/import-csv', [EmployeeController::class, 'importCsv']);
+Route::get('/employees/search-by-ticket', [EmployeeController::class, 'searchByTicket']);
