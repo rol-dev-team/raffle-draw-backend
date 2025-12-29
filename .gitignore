@@ -1,0 +1,13 @@
+
+/.idea
+
+/.vscode
+
+/node_modules
+/public/build
+
+/public/storage
+/storage/*.key
+/storage/pail
+/vendor
+
