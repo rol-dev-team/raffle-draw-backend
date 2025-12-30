@@ -197,13 +197,15 @@ class EmployeeController extends Controller
         ]);
     }
 
-    public function searchByTicket(Request $request)
+    public function searchByTicket($ticket_no)
     {
-        $request->validate([
-            'ticket_no' => 'required|string'
-        ]);
-
-        $ticketNo = trim($request->ticket_no);
+        if (empty($ticket_no)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Ticket number is required'
+            ], 422);
+        }
+        $ticketNo = trim($ticket_no);
 
         $employee = DB::table('tickets as t')
             ->join('employees as e', 'e.id', '=', 't.employee_id')

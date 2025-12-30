@@ -9,6 +9,5 @@ class DrawTicket extends Model
     protected $fillable = [
         'ticket_number',
         'is_winner',
-
     ];
 }
