@@ -15,4 +15,8 @@ class Ticket extends Model
         'price',
         'status',
     ];
+    public function employee()
+    {
+        return $this->belongsTo(Employee::class);
+    }
 }

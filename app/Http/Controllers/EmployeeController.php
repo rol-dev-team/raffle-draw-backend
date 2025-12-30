@@ -31,47 +31,67 @@ class EmployeeController extends Controller
 
 
     // 🔹 POST: Store Employee
-
     public function store(Request $request)
     {
-        $request->validate([
-            'reg_code' => 'required|unique:employees,reg_code',
-            'name' => 'required|string',
-            'tickets' => 'required|array|min:1',
-            'tickets.*.ticket_no' => 'required|distinct|unique:tickets,ticket_no',
+        $validated = $request->validate([
+            'reg_code'     => 'required|string|unique:employees,reg_code',
+            'name'         => 'required|string',
+            'company'      => 'required|string',
+            'branch'       => 'required|string',
+            'division'     => 'required|string',
+            'department'   => 'required|string',
+            'designation'  => 'required|string',
+            'gender'       => 'required|string',
+
+            'tickets'      => 'required|array|min:1',
+            'tickets.*'    => 'required|string|distinct|unique:tickets,ticket_no',
         ]);
 
-        DB::transaction(function () use ($request) {
+        DB::beginTransaction();
 
-            // 1️⃣ Create employee
+        try {
+            // 1️⃣ Create Employee
             $employee = Employee::create([
-                'branch' => $request->branch,
-                'division' => $request->division,
-                'reg_code' => $request->reg_code,
-                'name' => $request->name,
-                'department' => $request->department,
-                'designation' => $request->designation,
-                'company' => $request->company,
-                'gender' => $request->gender,
+                'branch'      => $validated['branch'],
+                'division'    => $validated['division'],
+                'reg_code'    => $validated['reg_code'],
+                'name'        => $validated['name'],
+                'department'  => $validated['department'],
+                'designation' => $validated['designation'],
+                'company'     => $validated['company'],
+                'gender'      => $validated['gender'],
             ]);
 
-            // 2️⃣ Create tickets
-            $tickets = collect($request->tickets)->map(function ($ticket) {
+            // 2️⃣ Prepare tickets data
+            $tickets = collect($validated['tickets'])->map(function ($ticketNo) {
                 return [
-                    'ticket_no' => $ticket['ticket_no'],
-                    'status' => 'active',
+                    'ticket_no'  => $ticketNo,
+                    'status'     => 'active',
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ];
-            });
+            })->toArray();
 
+            // 3️⃣ Save tickets using relationship
             $employee->tickets()->createMany($tickets);
-        });
 
+            DB::commit();
 
-        return response()->json([
-                'status' => true,
+            return response()->json([
+                'status'  => true,
                 'message' => 'Employee & tickets created successfully',
-                'data' => $employee
-             ], 201);
+                'data'    => $employee->load('tickets'),
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Something went wrong',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
     }
 
 

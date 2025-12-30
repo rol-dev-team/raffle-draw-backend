@@ -16,4 +16,8 @@ class Employee extends Model
         'company',
         'gender',
     ];
+     public function tickets()
+    {
+        return $this->hasMany(Ticket::class);
+    }
 }
