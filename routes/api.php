@@ -37,15 +37,16 @@ Route::post('/prizes/import-csv', [PrizeController::class, 'importCsv']);
 
 
 use App\Http\Controllers\DrawTicketController;
-// Draw Ticket Routes
+
+Route::apiResource('draw-tickets', DrawTicketController::class);
 Route::get('/draw-tickets', [DrawTicketController::class, 'index']);
 Route::post('/draw-tickets', [DrawTicketController::class, 'store']);
-Route::get('/draw-tickets/{id}', [DrawTicketController::class, 'show']);
-Route::put('/draw-tickets/{id}', [DrawTicketController::class, 'update'  ]);
+Route::get('/draw-tickets/{id}', [DrawTicketController::class, 'show']);     
+Route::put('/draw-tickets/{id}', [DrawTicketController::class, 'update']);   
 Route::delete('/draw-tickets/{id}', [DrawTicketController::class, 'destroy']);
-Route::post('/draw-tickets/import', [DrawTicketController::class, 'importCsv']);
-Route::apiResource('draw-tickets', DrawTicketController::class);
+// custom CSV import route
 Route::post('draw-tickets/import-csv', [DrawTicketController::class, 'importCsv']);
+
 
 
 use App\Http\Controllers\TicketController;

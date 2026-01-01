@@ -2,110 +2,77 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\DrawTicket;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
+use App\Models\DrawTicket;
+use Illuminate\Support\Facades\DB;
 
 class DrawTicketController extends Controller
 {
-    // List all tickets
+    // GET all tickets
     public function index()
     {
-        $tickets = DrawTicket::all();
-        return response()->json($tickets);
+        return response()->json([
+            'status' => true,
+            'data' => DrawTicket::all()
+        ]);
     }
 
-    // Store a new ticket
+    // POST create a single ticket
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'ticket_number' => 'required|string|unique:draw_tickets,ticket_number',
-            'is_winner' => 'boolean',
         ]);
 
-        $ticket = DrawTicket::create([
-            'ticket_number' => $request->ticket_number,
-            'is_winner' => $request->is_winner ?? false,
-        ]);
+        $ticket = DrawTicket::create($validated);
 
-        return response()->json($ticket, 201);
+        return response()->json([
+            'status' => true,
+            'data' => $ticket,
+            'message' => 'Ticket created successfully'
+        ], 201);
     }
 
-    // Show a single ticket
-    public function show($id)
-    {
-        $ticket = DrawTicket::findOrFail($id);
-        return response()->json($ticket);
-    }
-
-    // Update a ticket
-    public function update(Request $request, $id)
-    {
-        $ticket = DrawTicket::findOrFail($id);
-
-        $request->validate([
-            'ticket_number' => 'string|unique:draw_tickets,ticket_number,' . $ticket->id,
-            'is_winner' => 'boolean',
-        ]);
-
-        $ticket->update($request->only(['ticket_number', 'is_winner']));
-
-        return response()->json($ticket);
-    }
-
-    // Delete a ticket
+    // DELETE ticket
     public function destroy($id)
     {
-        $ticket = DrawTicket::findOrFail($id);
+        $ticket = DrawTicket::find($id);
+        if (!$ticket) {
+            return response()->json(['status' => false, 'message' => 'Ticket not found'], 404);
+        }
+
         $ticket->delete();
 
-        return response()->json(['message' => 'Ticket deleted successfully']);
+        return response()->json(['status' => true, 'message' => 'Ticket deleted successfully']);
     }
 
-    // Bulk import from CSV
+    // POST import tickets CSV
     public function importCsv(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|mimes:csv,txt',
+            'csv' => 'required|mimes:csv,txt'
         ]);
 
-        $file = $request->file('file');
-        $path = $file->getRealPath();
-        $data = array_map('str_getcsv', file($path));
+        $rows = array_map('str_getcsv', file($request->file('csv')));
+        $header = array_map('trim', array_shift($rows)); // expects header: ticket_number
 
-        if (empty($data)) {
-            return response()->json(['message' => 'CSV is empty'], 400);
-        }
+        DB::transaction(function () use ($rows, $header) {
+            foreach ($rows as $row) {
+                if (count($row) !== count($header)) continue;
 
-        // Assuming first row is header
-        $header = array_map('strtolower', $data[0]);
-        $rows = array_slice($data, 1);
+                $data = array_combine($header, $row);
+                if (empty($data['ticket_number'])) continue;
 
-        $imported = [];
-        $errors = [];
-
-        foreach ($rows as $index => $row) {
-            $rowData = array_combine($header, $row);
-
-            $validator = Validator::make($rowData, [
-                'ticket_number' => 'required|string|unique:draw_tickets,ticket_number',
-                'is_winner' => 'nullable|boolean',
-            ]);
-
-            if ($validator->fails()) {
-                $errors[$index + 2] = $validator->errors()->all(); // +2 for CSV line number
-                continue;
+                DrawTicket::firstOrCreate([
+                    'ticket_number' => $data['ticket_number']
+                ]);
             }
-
-            $imported[] = DrawTicket::create([
-                'ticket_number' => $rowData['ticket_number'],
-                'is_winner' => $rowData['is_winner'] ?? false,
-            ]);
-        }
+        });
 
         return response()->json([
-            'imported_count' => count($imported),
-            'errors' => $errors,
+            'status' => true,
+            'message' => 'Tickets imported successfully',
+            'imported_count' => count($rows)
         ]);
     }
 }
