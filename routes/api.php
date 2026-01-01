@@ -59,3 +59,8 @@ Route::delete('/tickets/{id}', [TicketController::class, 'destroy']);
 Route::post('/tickets/import-csv', [TicketController::class, 'importCsv']);
 
 
+use App\Http\Controllers\ResultHistoryController;
+
+Route::get('/result-histories', [ResultHistoryController::class, 'index']);
+Route::post('/result-histories', [ResultHistoryController::class, 'store']);
+Route::delete('/result-histories', [ResultHistoryController::class, 'destroyAll']); // optional

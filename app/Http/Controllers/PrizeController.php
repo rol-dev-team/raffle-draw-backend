@@ -21,7 +21,18 @@ class PrizeController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|unique:prizes,name',
+            'name' => [
+                'required',
+                'string',
+                function ($attribute, $value, $fail) use ($request) {
+                    $exists = Prize::where('name', $value)
+                        ->where('category_id', $request->category_id)
+                        ->exists();
+                    if ($exists) {
+                        $fail('Prize with this name already exists in the selected category.');
+                    }
+                },
+            ],
             'category_id' => 'required|exists:categories,id',
             'is_drawn' => 'boolean'
         ]);
@@ -66,7 +77,19 @@ class PrizeController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|unique:prizes,name,' . $prize->id,
+            'name' => [
+                'required',
+                'string',
+                function ($attribute, $value, $fail) use ($request, $prize) {
+                    $exists = Prize::where('name', $value)
+                        ->where('category_id', $request->category_id)
+                        ->where('id', '!=', $prize->id)
+                        ->exists();
+                    if ($exists) {
+                        $fail('Prize with this name already exists in the selected category.');
+                    }
+                },
+            ],
             'category_id' => 'required|exists:categories,id',
             'is_drawn' => 'boolean'
         ]);
@@ -100,11 +123,8 @@ class PrizeController extends Controller
         ]);
     }
 
-
-
-// PrizeController.php
-
-public function importCsv(Request $request)
+    // 🔹 POST: Import CSV
+    public function importCsv(Request $request)
 {
     $request->validate([
         'csv' => 'required|mimes:csv,txt'
@@ -142,5 +162,4 @@ public function importCsv(Request $request)
         'imported_count' => count($rows)
     ]);
 }
-
 }
