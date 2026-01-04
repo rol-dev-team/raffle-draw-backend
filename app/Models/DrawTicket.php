@@ -11,3 +11,4 @@ class DrawTicket extends Model
         'is_winner',
     ];
 }
+

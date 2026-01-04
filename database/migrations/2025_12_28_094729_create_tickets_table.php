@@ -17,10 +17,6 @@ return new class () extends Migration {
                 ->onDelete('cascade');
 
             $table->string('ticket_no')->unique();
-            $table->string('ticket_type')->nullable();
-            $table->date('issue_date')->nullable();
-            $table->date('expire_date')->nullable();
-            $table->decimal('price', 10, 2)->nullable();
             $table->string('status')->default('active');
             $table->timestamps();
         });

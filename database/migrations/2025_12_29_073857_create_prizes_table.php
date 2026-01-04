@@ -16,6 +16,7 @@ return new class () extends Migration {
             $table->foreignId('category_id')->constrained()->cascadeOnDelete();
             $table->boolean('is_drawn')->default(false);
             $table->timestamps();
+            $table->unique(['name', 'category_id']);
         });
     }
 

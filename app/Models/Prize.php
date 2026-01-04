@@ -12,4 +12,7 @@ class Prize extends Model
         'is_drawn',
 
     ];
+
+
+
 }
