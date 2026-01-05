@@ -104,6 +104,45 @@ class PrizeController extends Controller
 
 // PrizeController.php
 
+// public function importCsv(Request $request)
+// {
+//     $request->validate([
+//         'csv' => 'required|mimes:csv,txt'
+//     ]);
+
+//     $rows = array_map('str_getcsv', file($request->file('csv')));
+//     $header = array_map('trim', array_shift($rows));
+//     $categories = DB::table('categories')->pluck('id', 'name')->toArray();
+
+//     DB::transaction(function () use ($rows, $header, $categories) {
+//         foreach ($rows as $row) {
+//             if (count($row) !== count($header)) continue;
+
+//             $data = array_combine($header, $row);
+
+//             $categoryName = $data['Category'] ?? null;
+//             $prizeName    = $data['Prize'] ?? null;
+
+//             if (!$categoryName || !$prizeName) continue;
+//             if (!isset($categories[$categoryName])) continue;
+
+//             \App\Models\Prize::firstOrCreate([
+//                 'name' => $prizeName,
+//                 'category_id' => $categories[$categoryName],
+//             ], [
+//                 'is_drawn' => false,
+//             ]);
+//         }
+//     });
+
+//     return response()->json([
+//         'status' => true,
+//         'message' => 'Prize CSV imported successfully',
+//         'imported_count' => count($rows)
+//     ]);
+// }
+
+
 public function importCsv(Request $request)
 {
     $request->validate([
@@ -112,23 +151,43 @@ public function importCsv(Request $request)
 
     $rows = array_map('str_getcsv', file($request->file('csv')));
     $header = array_map('trim', array_shift($rows));
-    $categories = DB::table('categories')->pluck('id', 'name')->toArray();
 
-    DB::transaction(function () use ($rows, $header, $categories) {
+    DB::transaction(function () use ($rows, $header) {
+
+        // 🔹 Step 1: Create / Fetch Categories
+        $categoryMap = [];
+
+        foreach ($rows as $row) {
+            if (count($row) !== count($header)) continue;
+
+            $data = array_combine($header, $row);
+            $categoryName = trim($data['Category'] ?? '');
+
+            if (!$categoryName) continue;
+
+            if (!isset($categoryMap[$categoryName])) {
+                $category = \App\Models\Category::firstOrCreate([
+                    'name' => $categoryName,
+                ]);
+
+                $categoryMap[$categoryName] = $category->id;
+            }
+        }
+
+        // 🔹 Step 2: Insert Prizes
         foreach ($rows as $row) {
             if (count($row) !== count($header)) continue;
 
             $data = array_combine($header, $row);
 
-            $categoryName = $data['Category'] ?? null;
-            $prizeName    = $data['Prize'] ?? null;
+            $categoryName = trim($data['Category'] ?? '');
+            $prizeName    = trim($data['Prize'] ?? '');
 
             if (!$categoryName || !$prizeName) continue;
-            if (!isset($categories[$categoryName])) continue;
 
             \App\Models\Prize::firstOrCreate([
                 'name' => $prizeName,
-                'category_id' => $categories[$categoryName],
+                'category_id' => $categoryMap[$categoryName],
             ], [
                 'is_drawn' => false,
             ]);
@@ -137,11 +196,9 @@ public function importCsv(Request $request)
 
     return response()->json([
         'status' => true,
-        'message' => 'Prize CSV imported successfully',
-        'imported_count' => count($rows)
+        'message' => 'Prize CSV imported successfully'
     ]);
 }
-
 
 
 
