@@ -208,177 +208,178 @@ class DrawController extends Controller
 //     });
 // }
 
-public function drawWithShuffle(Request $request)
-{
-    $request->validate([
-        'category'  => 'required|string',
-        'groupSize' => 'required|integer|min:1',
-        'prizeId'   => 'nullable', // can be null | single | array
-    ]);
+// last version
+// public function drawWithShuffle(Request $request)
+// {
+//     $request->validate([
+//         'category'  => 'required|string',
+//         'groupSize' => 'required|integer|min:1',
+//         'prizeId'   => 'nullable', // can be null | single | array
+//     ]);
 
-    $category = DB::table('categories')
-        ->where('name', $request->category)
-        ->first();
+//     $category = DB::table('categories')
+//         ->where('name', $request->category)
+//         ->first();
 
-    if (!$category) {
-        return response()->json([
-            'error' => 'Invalid category'
-        ], 400);
-    }
+//     if (!$category) {
+//         return response()->json([
+//             'error' => 'Invalid category'
+//         ], 400);
+//     }
 
-    $totalWinnerSize = (int) $request->groupSize;
-    $categoryId = $category->id;
+//     $totalWinnerSize = (int) $request->groupSize;
+//     $categoryId = $category->id;
 
-    return DB::transaction(function () use ($request, $totalWinnerSize, $categoryId) {
+//     return DB::transaction(function () use ($request, $totalWinnerSize, $categoryId) {
 
-        /* -------------------------
-           Resolve Prize IDs
-        --------------------------*/
+//         /* -------------------------
+//            Resolve Prize IDs
+//         --------------------------*/
 
-        if (empty($request->prizeId)) {
+//         if (empty($request->prizeId)) {
 
-            // prizeId not sent → get all undrawn prizes of category
-            $prizeIds = DB::table('prizes')
-                ->where('category_id', $categoryId)
-                ->where('is_drawn', false)
-                ->pluck('id')
-                ->toArray();
+//             // prizeId not sent → get all undrawn prizes of category
+//             $prizeIds = DB::table('prizes')
+//                 ->where('category_id', $categoryId)
+//                 ->where('is_drawn', false)
+//                 ->pluck('id')
+//                 ->toArray();
 
-            if (empty($prizeIds)) {
-                return response()->json([
-                    'error' => 'No available prizes for this category'
-                ], 400);
-            }
+//             if (empty($prizeIds)) {
+//                 return response()->json([
+//                     'error' => 'No available prizes for this category'
+//                 ], 400);
+//             }
 
-        } else {
-            // prizeId can be single or array
-            $prizeIds = is_array($request->prizeId)
-                ? array_map('intval', $request->prizeId)
-                : [(int) $request->prizeId];
-        }
+//         } else {
+//             // prizeId can be single or array
+//             $prizeIds = is_array($request->prizeId)
+//                 ? array_map('intval', $request->prizeId)
+//                 : [(int) $request->prizeId];
+//         }
 
-        $prizeCount = count($prizeIds);
+//         $prizeCount = count($prizeIds);
 
-        /* -------------------------
-           Calculate per-prize winner distribution
-        --------------------------*/
+//         /* -------------------------
+//            Calculate per-prize winner distribution
+//         --------------------------*/
         
-        // Distribute totalWinnerSize evenly across prizes
-        $perPrizeWinners = intval(floor($totalWinnerSize / $prizeCount));
-        $remainderWinners = $totalWinnerSize % $prizeCount;
+//         // Distribute totalWinnerSize evenly across prizes
+//         $perPrizeWinners = intval(floor($totalWinnerSize / $prizeCount));
+//         $remainderWinners = $totalWinnerSize % $prizeCount;
         
-        // Create array of winner counts per prize
-        $winnerCounts = [];
-        foreach ($prizeIds as $index => $prizeId) {
-            $winnerCounts[$prizeId] = $perPrizeWinners;
-            // Distribute remainder winners to first few prizes
-            if ($index < $remainderWinners) {
-                $winnerCounts[$prizeId]++;
-            }
-        }
+//         // Create array of winner counts per prize
+//         $winnerCounts = [];
+//         foreach ($prizeIds as $index => $prizeId) {
+//             $winnerCounts[$prizeId] = $perPrizeWinners;
+//             // Distribute remainder winners to first few prizes
+//             if ($index < $remainderWinners) {
+//                 $winnerCounts[$prizeId]++;
+//             }
+//         }
 
-        /* -------------------------
-           Validate sufficient tickets
-        --------------------------*/
+//         /* -------------------------
+//            Validate sufficient tickets
+//         --------------------------*/
 
-        $totalAvailableTickets = DB::table('draw_tickets')
-            ->where('is_winner', false)
-            ->count();
+//         $totalAvailableTickets = DB::table('draw_tickets')
+//             ->where('is_winner', false)
+//             ->count();
 
-        if ($totalWinnerSize > $totalAvailableTickets) {
-            return response()->json([
-                'error' => "Not enough tickets. Need {$totalWinnerSize} but only {$totalAvailableTickets} available."
-            ], 400);
-        }
+//         if ($totalWinnerSize > $totalAvailableTickets) {
+//             return response()->json([
+//                 'error' => "Not enough tickets. Need {$totalWinnerSize} but only {$totalAvailableTickets} available."
+//             ], 400);
+//         }
 
-        $allResults = [];
-        $selectedTicketIds = []; // Track already selected tickets
+//         $allResults = [];
+//         $selectedTicketIds = []; // Track already selected tickets
 
-        /* -------------------------
-           Draw for each prize
-        --------------------------*/
+//         /* -------------------------
+//            Draw for each prize
+//         --------------------------*/
 
-        foreach ($prizeIds as $prizeId) {
+//         foreach ($prizeIds as $prizeId) {
 
-            $winnersNeededForPrize = $winnerCounts[$prizeId];
+//             $winnersNeededForPrize = $winnerCounts[$prizeId];
 
-            // 1️⃣ get available tickets (excluding already selected ones)
-            $tickets = DB::table('draw_tickets')
-                ->where('is_winner', false)
-                ->whereNotIn('id', $selectedTicketIds)
-                ->pluck('id', 'ticket_number')
-                ->toArray();
+//             // 1️⃣ get available tickets (excluding already selected ones)
+//             $tickets = DB::table('draw_tickets')
+//                 ->where('is_winner', false)
+//                 ->whereNotIn('id', $selectedTicketIds)
+//                 ->pluck('id', 'ticket_number')
+//                 ->toArray();
 
-            if ($winnersNeededForPrize > count($tickets)) {
-                return response()->json([
-                    'error' => "Not enough remaining tickets for prize {$prizeId}"
-                ], 400);
-            }
+//             if ($winnersNeededForPrize > count($tickets)) {
+//                 return response()->json([
+//                     'error' => "Not enough remaining tickets for prize {$prizeId}"
+//                 ], 400);
+//             }
 
-            // 2️⃣ shuffle and select tickets for this prize
-            $ticketNumbers = array_keys($tickets);
-            shuffle($ticketNumbers);
-            $winnerNumbersForPrize = array_slice($ticketNumbers, 0, $winnersNeededForPrize);
+//             // 2️⃣ shuffle and select tickets for this prize
+//             $ticketNumbers = array_keys($tickets);
+//             shuffle($ticketNumbers);
+//             $winnerNumbersForPrize = array_slice($ticketNumbers, 0, $winnersNeededForPrize);
 
-            // 3️⃣ create draw
-            $drawId = DB::table('draws')->insertGetId([
-                'category_id' => $categoryId,
-                'prize_id'    => $prizeId,
-                'draw_size'   => $winnersNeededForPrize,
-                'created_at'  => now(),
-                'updated_at'  => now(),
-            ]);
+//             // 3️⃣ create draw
+//             $drawId = DB::table('draws')->insertGetId([
+//                 'category_id' => $categoryId,
+//                 'prize_id'    => $prizeId,
+//                 'draw_size'   => $winnersNeededForPrize,
+//                 'created_at'  => now(),
+//                 'updated_at'  => now(),
+//             ]);
 
-            // 4️⃣ save winners
-            foreach ($winnerNumbersForPrize as $ticketNumber) {
-                $ticketId = $tickets[$ticketNumber];
-                $selectedTicketIds[] = $ticketId; // Mark as selected
+//             // 4️⃣ save winners
+//             foreach ($winnerNumbersForPrize as $ticketNumber) {
+//                 $ticketId = $tickets[$ticketNumber];
+//                 $selectedTicketIds[] = $ticketId; // Mark as selected
 
-                DB::table('draw_tickets')
-                    ->where('id', $ticketId)
-                    ->update(['is_winner' => true]);
+//                 DB::table('draw_tickets')
+//                     ->where('id', $ticketId)
+//                     ->update(['is_winner' => true]);
 
-                DB::table('draw_winners')->insert([
-                    'draw_id'        => $drawId,
-                    'draw_ticket_id' => $ticketId,
-                    'created_at'     => now(),
-                    'updated_at'     => now(),
-                ]);
-            }
+//                 DB::table('draw_winners')->insert([
+//                     'draw_id'        => $drawId,
+//                     'draw_ticket_id' => $ticketId,
+//                     'created_at'     => now(),
+//                     'updated_at'     => now(),
+//                 ]);
+//             }
 
-            // 5️⃣ mark prize as drawn
-            DB::table('prizes')
-                ->where('id', $prizeId)
-                ->update(['is_drawn' => true]);
+//             // 5️⃣ mark prize as drawn
+//             DB::table('prizes')
+//                 ->where('id', $prizeId)
+//                 ->update(['is_drawn' => true]);
 
-            // 6️⃣ collect result
-            $results = DB::table('draw_winners')
-                ->join('draw_tickets', 'draw_winners.draw_ticket_id', '=', 'draw_tickets.id')
-                ->join('draws', 'draw_winners.draw_id', '=', 'draws.id')
-                ->join('prizes', 'draws.prize_id', '=', 'prizes.id')
-                ->join('categories', 'draws.category_id', '=', 'categories.id')
-                ->where('draw_winners.draw_id', $drawId)
-                ->select([
-                    'draw_tickets.ticket_number',
-                    'prizes.name as prize',
-                    'categories.name as category',
-                ])
-                ->get();
+//             // 6️⃣ collect result
+//             $results = DB::table('draw_winners')
+//                 ->join('draw_tickets', 'draw_winners.draw_ticket_id', '=', 'draw_tickets.id')
+//                 ->join('draws', 'draw_winners.draw_id', '=', 'draws.id')
+//                 ->join('prizes', 'draws.prize_id', '=', 'prizes.id')
+//                 ->join('categories', 'draws.category_id', '=', 'categories.id')
+//                 ->where('draw_winners.draw_id', $drawId)
+//                 ->select([
+//                     'draw_tickets.ticket_number',
+//                     'prizes.name as prize',
+//                     'categories.name as category',
+//                 ])
+//                 ->get();
 
-            $allResults[] = $results;
-        }
+//             $allResults[] = $results;
+//         }
 
-        return response()->json([
-            'message' => 'Draw completed successfully',
-            'data'    => $allResults,
-            'summary' => [
-                'total_winners' => $totalWinnerSize,
-                'prize_count' => $prizeCount,
-                'winners_per_prize' => $winnerCounts,
-            ]
-        ]);
-    });
-}
+//         return response()->json([
+//             'message' => 'Draw completed successfully',
+//             'data'    => $allResults,
+//             'summary' => [
+//                 'total_winners' => $totalWinnerSize,
+//                 'prize_count' => $prizeCount,
+//                 'winners_per_prize' => $winnerCounts,
+//             ]
+//         ]);
+//     });
+// }
 
 public function getDrawResults()
 {
@@ -403,4 +404,151 @@ public function getDrawResults()
 
 
 }
+
+
+// final version
+public function drawWithShuffle(Request $request)
+{
+    $request->validate([
+        'category'  => 'required|string',
+        'groupSize' => 'required|integer|min:1',
+        'prizeId'   => 'nullable', // single prize only (optional)
+    ]);
+
+    $category = DB::table('categories')
+        ->where('name', $request->category)
+        ->first();
+
+    if (!$category) {
+        return response()->json([
+            'error' => 'Invalid category'
+        ], 400);
+    }
+
+    $categoryId = $category->id;
+    $totalWinners = (int) $request->groupSize;
+
+    return DB::transaction(function () use ($request, $categoryId, $totalWinners) {
+
+        /* ---------------------------------
+           1️⃣ Resolve prize IDs
+        ----------------------------------*/
+
+        if (!empty($request->prizeId)) {
+
+            // Single prize draw
+            $prizeIds = [(int) $request->prizeId];
+
+        } else {
+
+            // 🔥 IMPORTANT: pick ONLY required prizes
+            $prizeIds = DB::table('prizes')
+                ->where('category_id', $categoryId)
+                ->where('is_drawn', false)
+                // ->inRandomOrder()
+                ->orderBy('id', 'asc')
+                ->limit($totalWinners) // ⭐ core fix
+                ->pluck('id')
+                ->toArray();
+
+            if (count($prizeIds) < $totalWinners) {
+                return response()->json([
+                    'error' => 'Not enough available prizes'
+                ], 400);
+            }
+        }
+
+        /* ---------------------------------
+           2️⃣ Validate available tickets
+        ----------------------------------*/
+
+        $availableTickets = DB::table('draw_tickets')
+            ->where('is_winner', false)
+            ->count();
+
+        if ($availableTickets < $totalWinners) {
+            return response()->json([
+                'error' => "Not enough tickets. Need {$totalWinners}, only {$availableTickets} available."
+            ], 400);
+        }
+
+        /* ---------------------------------
+           3️⃣ Pick random tickets
+        ----------------------------------*/
+
+        $tickets = DB::table('draw_tickets')
+            ->where('is_winner', false)
+            ->inRandomOrder()
+            ->limit($totalWinners)
+            ->get(['id', 'ticket_number']);
+
+        $allResults = [];
+
+        /* ---------------------------------
+           4️⃣ Draw loop (1 prize = 1 winner)
+        ----------------------------------*/
+
+        foreach ($prizeIds as $index => $prizeId) {
+
+            $ticket = $tickets[$index];
+
+            // Create draw
+            $drawId = DB::table('draws')->insertGetId([
+                'category_id' => $categoryId,
+                'prize_id'    => $prizeId,
+                'draw_size'   => 1,
+                'created_at'  => now(),
+                'updated_at'  => now(),
+            ]);
+
+            // Mark ticket as winner
+            DB::table('draw_tickets')
+                ->where('id', $ticket->id)
+                ->update(['is_winner' => true]);
+
+            // Save winner
+            DB::table('draw_winners')->insert([
+                'draw_id'        => $drawId,
+                'draw_ticket_id' => $ticket->id,
+                'created_at'     => now(),
+                'updated_at'     => now(),
+            ]);
+
+            // ✅ Mark ONLY used prize as drawn
+            DB::table('prizes')
+                ->where('id', $prizeId)
+                ->update(['is_drawn' => true]);
+
+            // Collect result
+            $result = DB::table('draw_winners')
+                ->join('draw_tickets', 'draw_winners.draw_ticket_id', '=', 'draw_tickets.id')
+                ->join('draws', 'draw_winners.draw_id', '=', 'draws.id')
+                ->join('prizes', 'draws.prize_id', '=', 'prizes.id')
+                ->join('categories', 'draws.category_id', '=', 'categories.id')
+                ->where('draw_winners.draw_id', $drawId)
+                ->select([
+                    'draw_tickets.ticket_number',
+                    'prizes.name as prize',
+                    'categories.name as category',
+                ])
+                ->first();
+
+            $allResults[] = $result;
+        }
+
+        /* ---------------------------------
+           5️⃣ Final response
+        ----------------------------------*/
+
+        return response()->json([
+            'message' => 'Draw completed successfully',
+            'data'    => $allResults,
+            'summary' => [
+                'total_winners' => $totalWinners,
+                'prizes_used'   => count($prizeIds),
+            ]
+        ]);
+    });
+}
+
 }
