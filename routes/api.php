@@ -7,6 +7,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\PrizeController;
 use App\Http\Controllers\DrawTicketController;
 use App\Http\Controllers\DrawController;
+use App\Http\Controllers\TruncateController;
 
 Route::get('/employees', [EmployeeController::class, 'index']);
 Route::post('/employees', [EmployeeController::class, 'store']);
@@ -64,3 +65,8 @@ Route::get('draw-results', [DrawController::class, 'getDrawResults']);
 // Route::put('/tickets/{id}', [TicketController::class, 'update']);   
 // Route::delete('/tickets/{id}', [TicketController::class, 'destroy']);
 // Route::post('/tickets/import-csv', [TicketController::class, 'importCsv']);
+
+
+// table truncate routes for testing purpose
+Route::get('/truncate-draw-tickets', [TruncateController::class, 'truncateDrawTickets']);
+Route::get('/truncate-employees', [TruncateController::class, 'truncateEmployees']);
